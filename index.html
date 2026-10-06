@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Наши обязанности</title>
+<style>
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    margin: 0;
+    padding: 20px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f5f5f5;
+    color: #222;
+    min-height: 100vh;
+  }
+  h1 {
+    text-align: center;
+    font-size: 24px;
+    margin-bottom: 24px;
+    color: #333;
+  }
+  .board {
+    display: flex;
+    gap: 16px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .column {
+    flex: 1;
+    background: #fff;
+    border-radius: 16px;
+    padding: 16px;
+    min-height: 400px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .column h2 {
+    text-align: center;
+    font-size: 18px;
+    margin: 0 0 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #eee;
+    color: #555;
+  }
+  .column.ulya h2 { color: #c2185b; border-color: #f8bbd0; }
+  .column.sasha h2 { color: #1976d2; border-color: #bbdefb; }
+
+  .dropzone {
+    min-height: 350px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: background 0.2s;
+    border-radius: 12px;
+    padding: 4px;
+  }
+  .dropzone.over {
+    background: #f0f7ff;
+  }
+
+  .card {
+    background: #f9f9f9;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 14px 16px;
+    cursor: grab;
+    font-size: 15px;
+    user-select: none;
+    transition: transform 0.15s, box-shadow 0.15s, opacity 0.2s;
+    touch-action: none;
+  }
+  .card:active {
+    cursor: grabbing;
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  .card.dragging {
+    opacity: 0.4;
+  }
+  .card.hover {
+    border-color: #2196f3;
+    background: #e3f2fd;
+  }
+  .card[data-owner="ulya"] { border-left: 4px solid #c2185b; }
+  .card[data-owner="sasha"] { border-left: 4px solid #1976d2; }
+
+  .hint {
+    text-align: center;
+    font-size: 13px;
+    color: #999;
+    margin-top: 20px;
+  }
+
+  @media (max-width: 600px) {
+    .board {
+      flex-direction: column;
+    }
+    .column {
+      min-height: 250px;
+    }
+    .dropzone {
+      min-height: 180px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<h1>Наши обязанности</h1>
+
+<div class="board">
+  <div class="column ulya">
+    <h2>Уля</h2>
+    <div class="dropzone" id="ulya" data-owner="ulya"></div>
+  </div>
+  <div class="column sasha">
+    <h2>Саша</h2>
+    <div class="dropzone" id="sasha" data-owner="sasha"></div>
+  </div>
+</div>
+
+<p class="hint">Перетаскивай карточки между колонками</p>
+
+<script>
+  const tasks = [
+    { id: 1, text: "Посуда за собой", owner: "ulya" },
+    { id: 2, text: "Посуда после готовки (если готовил другой)", owner: "ulya" },
+    { id: 3, text: "Готовка", owner: "ulya" },
+    { id: 4, text: "Туалет", owner: "ulya" },
+    { id: 5, text: "Полы", owner: "ulya" },
+    { id: 6, text: "Мусор", owner: "ulya" },
+    { id: 7, text: "Пыль", owner: "sasha" },
+    { id: 8, text: "Стиралка", owner: "sasha" },
+    { id: 9, text: "Бельё (развесить / сложить)", owner: "sasha" },
+    { id: 10, text: "Ванна / раковина", owner: "sasha" },
+    { id: 11, text: "Робот-пылесос", owner: "sasha" },
+    { id: 12, text: "Постельное бельё (вместе)", owner: "sasha" }
+  ];
+
+  const dropzones = document.querySelectorAll('.dropzone');
+
+  function createCard(task) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.draggable = true;
+    card.dataset.id = task.id;
+    card.dataset.owner = task.owner;
+    card.textContent = task.text;
+    return card;
+  }
+
+  function render() {
+    dropzones.forEach(zone => zone.innerHTML = '');
+    tasks.forEach(task => {
+      const card = createCard(task);
+      document.getElementById(task.owner).appendChild(card);
+    });
+    attachEvents();
+  }
+
+  function attachEvents() {
+    document.querySelectorAll('.card').forEach(card => {
+      card.addEventListener('dragstart', handleDragStart);
+      card.addEventListener('dragend', handleDragEnd);
+      card.addEventListener('touchstart', handleTouchStart, { passive: false });
+      card.addEventListener('touchmove', handleTouchMove, { passive: false });
+      card.addEventListener('touchend', handleTouchEnd);
+    });
+  }
+
+  let draggedCard = null;
+  let touchCard = null;
+  let touchOffsetX = 0;
+  let touchOffsetY = 0;
+
+  function handleDragStart(e) {
+    draggedCard = this;
+    this.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  }
+
+  function handleDragEnd() {
+    this.classList.remove('dragging');
+    draggedCard = null;
+    document.querySelectorAll('.dropzone').forEach(z => z.classList.remove('over'));
+  }
+
+  dropzones.forEach(zone => {
+    zone.addEventListener('dragover', e => {
+      e.preventDefault();
+      zone.classList.add('over');
+      const after = getDragAfterElement(zone, e.clientY);
+      if (draggedCard) {
+        if (after == null) zone.appendChild(draggedCard);
+        else zone.insertBefore(draggedCard, after);
+      }
+    });
+    zone.addEventListener('dragleave', () => zone.classList.remove('over'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.classList.remove('over');
+      if (draggedCard) {
+        const newOwner = zone.dataset.owner;
+        const id = parseInt(draggedCard.dataset.id);
+        const task = tasks.find(t => t.id === id);
+        if (task) task.owner = newOwner;
+        draggedCard.dataset.owner = newOwner;
+      }
+    });
+  });
+
+  function getDragAfterElement(container, y) {
+    const elements = [...container.querySelectorAll('.card:not(.dragging)')];
+    return elements.reduce((closest, child) => {
+      const box = child.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+      if (offset < 0 && offset > closest.offset) {
+        return { offset, element: child };
+      }
+      return closest;
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+  }
+
+  function handleTouchStart(e) {
+    touchCard = this;
+    const touch = e.touches[0];
+    const rect = this.getBoundingClientRect();
+    touchOffsetX = touch.clientX - rect.left;
+    touchOffsetY = touch.clientY - rect.top;
+    this.classList.add('dragging');
+    this.style.position = 'fixed';
+    this.style.zIndex = '1000';
+    this.style.width = rect.width + 'px';
+    this.style.left = (touch.clientX - touchOffsetX) + 'px';
+    this.style.top = (touch.clientY - touchOffsetY) + 'px';
+    this.style.pointerEvents = 'none';
+    e.preventDefault();
+  }
+
+  function handleTouchMove(e) {
+    if (!touchCard) return;
+    const touch = e.touches[0];
+    touchCard.style.left = (touch.clientX - touchOffsetX) + 'px';
+    touchCard.style.top = (touch.clientY - touchOffsetY) + 'px';
+    e.preventDefault();
+  }
+
+  function handleTouchEnd(e) {
+    if (!touchCard) return;
+    const touch = e.changedTouches[0];
+    const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+    const zone = elementBelow ? elementBelow.closest('.dropzone') : null;
+
+    if (zone) {
+      const newOwner = zone.dataset.owner;
+      const id = parseInt(touchCard.dataset.id);
+      const task = tasks.find(t => t.id === id);
+      if (task) task.owner = newOwner;
+      touchCard.dataset.owner = newOwner;
+    }
+
+    touchCard.style.position = '';
+    touchCard.style.zIndex = '';
+    touchCard.style.width = '';
+    touchCard.style.left = '';
+    touchCard.style.top = '';
+    touchCard.style.pointerEvents = '';
+    touchCard.classList.remove('dragging');
+    touchCard = null;
+
+    render();
+  }
+
+  render();
+</script>
+
+</body>
+</html>
